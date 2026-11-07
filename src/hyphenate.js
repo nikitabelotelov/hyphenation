@@ -86,6 +86,7 @@ function formatWithBreaks(word, breaks) {
  * R118_PREFIX_VOWEL: исключение — после односложной приставки перед гласной (не ы).
  * R118_PREFIX_Y: после приставки перед ы перенос нельзя.
  * R119_1: нельзя отрывать ь/ъ от предшествующей буквы.
+ * R119_2: нельзя отрывать й от предшествующей гласной.
  */
 export function hyphenate(word) {
   const breaks = new Set()
@@ -99,6 +100,9 @@ export function hyphenate(word) {
 
     // R119_1_SIGNS — не перед ь/ъ
     if (SIGNS.has(word[i])) continue
+
+    // R119_2_SHORT_I — не между гласной и й
+    if (isVowel(word[i - 1]) && SHORT_I.has(word[i])) continue
 
     // R118_PREFIX_Y
     if (isPrefixYForbidden(word, i)) continue
