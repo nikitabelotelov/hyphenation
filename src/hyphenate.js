@@ -107,6 +107,7 @@ function formatWithBreaks(word, breaks) {
  * R118_PREFIX_Y: после приставки перед ы перенос нельзя.
  * R119_1: нельзя отрывать ь/ъ от предшествующей буквы.
  * R119_2: нельзя отрывать й от предшествующей гласной.
+ * R119_3: нельзя оставлять одну букву в начале или конце слова.
  * R119_4: не дробить односложную приставку перед согласной (формулировка 1956).
  */
 export function hyphenate(word) {
@@ -118,6 +119,9 @@ export function hyphenate(word) {
 
     // R117_SYLLABLE
     if (!hasVowel(left) || !hasVowel(right)) continue
+
+    // R119_3_SINGLE_LETTER
+    if (left.length === 1 || right.length === 1) continue
 
     // R119_1_SIGNS — не перед ь/ъ
     if (SIGNS.has(word[i])) continue
