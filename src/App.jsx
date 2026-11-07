@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { parseWords } from './parseWords'
 import { hyphenate } from './hyphenate'
+import { compareBreaks } from './compare'
 import './App.css'
 
 function App() {
@@ -20,11 +21,12 @@ function App() {
       const text = String(reader.result ?? '')
       const entries = parseWords(text)
       setResults(
-        entries.map(({ word, etalon }) => ({
-          word,
-          etalon,
-          prediction: hyphenate(word),
-        })),
+        entries.map(({ word, etalon }) => {
+          const prediction = hyphenate(word)
+          const mismatch =
+            etalon !== null && !compareBreaks(prediction, etalon).exact
+          return { word, etalon, prediction, mismatch }
+        }),
       )
     }
     reader.onerror = () => {
@@ -33,6 +35,9 @@ function App() {
     }
     reader.readAsText(file)
   }
+
+  const withEtalon = results.filter((item) => item.etalon !== null)
+  const mismatches = withEtalon.filter((item) => item.mismatch).length
 
   return (
     <main className="app">
@@ -44,14 +49,26 @@ function App() {
       </label>
 
       {fileName && <p className="meta">Файл: {fileName}</p>}
+      {withEtalon.length > 0 && (
+        <p className="meta">
+          С эталоном: {withEtalon.length - mismatches}/{withEtalon.length} совпало
+          {mismatches > 0 ? `, не совпало: ${mismatches}` : ''}
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
 
       {results.length > 0 && (
         <ul className="results">
-          {results.map(({ word, etalon, prediction }, index) => (
-            <li key={`${word}-${index}`} className="result">
-              <div>
-                <span className="label">Слово:</span> {word}
+          {results.map(({ word, etalon, prediction, mismatch }, index) => (
+            <li
+              key={`${word}-${index}`}
+              className={mismatch ? 'result result-mismatch' : 'result'}
+            >
+              <div className="result-head">
+                <div>
+                  <span className="label">Слово:</span> {word}
+                </div>
+                {mismatch && <span className="badge">не совпало</span>}
               </div>
               {etalon !== null && (
                 <div>
