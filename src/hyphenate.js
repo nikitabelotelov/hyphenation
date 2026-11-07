@@ -88,6 +88,63 @@ function isInsidePrefixBeforeConsonant(word, index) {
   return prefixLen !== null && index > 0 && index < prefixLen
 }
 
+/**
+ * R119_7: удвоенные согласные между гласными.
+ * Нельзя V|CC… (ма|сса); типичный разрыв между ними (мас|са).
+ * После пары не режем дальше по согласному кластеру до гласной (рус|ский).
+ * Морфемные исключения (ново|вве…) наивно не ловим.
+ */
+function isDoubleConsonantForbidden(word, index) {
+  const prev = word[index - 1]
+  const cur = word[index]
+  const next = word[index + 1]
+
+  // ма|сса — перед первой из пары CC
+  if (
+    isVowel(prev) &&
+    isConsonant(cur) &&
+    next &&
+    cur.toLowerCase() === next.toLowerCase() &&
+    hasVowel(word.slice(index + 2))
+  ) {
+    return true
+  }
+
+  // рус|с|кий → убрать с|к: после CC ещё согласные до гласной
+  if (
+    index >= 3 &&
+    isConsonant(word[index - 2]) &&
+    word[index - 2].toLowerCase() === prev.toLowerCase() &&
+    isConsonant(cur) &&
+    isVowel(word[index - 3]) &&
+    hasVowel(word.slice(index))
+  ) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * R119_9: буквенные аббревиатуры (МИД, СССР, КЗоТ, ТУ-104) не переносятся.
+ */
+function isInitialism(word) {
+  const letters = [...word].filter((char) => /[а-яёa-z]/i.test(char))
+  if (letters.length < 2) return false
+
+  const uppers = letters.filter(
+    (char) => char === char.toUpperCase() && char !== char.toLowerCase(),
+  )
+
+  // все буквы заглавные
+  if (uppers.length === letters.length) return true
+
+  // смешанные вроде КЗоТ: почти все заглавные
+  if (uppers.length >= 2 && uppers.length >= letters.length - 1) return true
+
+  return false
+}
+
 function formatWithBreaks(word, breaks) {
   let result = ''
   for (let i = 0; i < word.length; i++) {
@@ -109,8 +166,13 @@ function formatWithBreaks(word, breaks) {
  * R119_2: нельзя отрывать й от предшествующей гласной.
  * R119_3: нельзя оставлять одну букву в начале или конце слова.
  * R119_4: не дробить односложную приставку перед согласной (формулировка 1956).
+ * R119_7: удвоенные согласные — разрыв между ними (наивно, без морфемных исключений).
+ * R119_9: буквенные аббревиатуры не переносятся.
  */
 export function hyphenate(word) {
+  // R119_9_INITIALISM
+  if (isInitialism(word)) return word
+
   const breaks = new Set()
 
   for (let i = 1; i < word.length; i++) {
@@ -128,6 +190,9 @@ export function hyphenate(word) {
 
     // R119_2_SHORT_I — не между гласной и й
     if (isVowel(word[i - 1]) && SHORT_I.has(word[i])) continue
+
+    // R119_7_DOUBLE
+    if (isDoubleConsonantForbidden(word, i)) continue
 
     // R119_4_PREFIX_CONSONANT — не внутри приставки перед согласной
     if (isInsidePrefixBeforeConsonant(word, i)) continue
