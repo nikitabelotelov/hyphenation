@@ -43,10 +43,19 @@ function App() {
     <main className="app">
       <h1>Переносы слов</h1>
 
-      <label className="file-picker">
-        Выбрать файл
-        <input type="file" accept=".txt,text/plain" onChange={handleFileChange} />
-      </label>
+      <div className="file-actions">
+        <label className="file-picker">
+          Выбрать файл
+          <input type="file" accept=".txt,text/plain" onChange={handleFileChange} />
+        </label>
+        <a
+          className="sample-link"
+          href={`${import.meta.env.BASE_URL}sample.txt`}
+          download="sample.txt"
+        >
+          Скачать пример
+        </a>
+      </div>
 
       {fileName && <p className="meta">Файл: {fileName}</p>}
       {withEtalon.length > 0 && (
