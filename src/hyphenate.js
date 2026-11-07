@@ -2,6 +2,34 @@ const VOWELS = new Set('аеёиоуыэюяАЕЁИОУЫЭЮЯ')
 const SIGNS = new Set('ьъЬЪ')
 const SHORT_I = new Set('йЙ')
 
+/**
+ * Односложные приставки на согласную (§ 118, прим. 1).
+ * Longer first — longest match.
+ * Без гласной (в, с, вз…) R117 всё равно запретит границу.
+ */
+const MONO_PREFIXES = [
+  'пред',
+  'без',
+  'бес',
+  'раз',
+  'рас',
+  'из',
+  'ис',
+  'воз',
+  'вос',
+  'низ',
+  'нис',
+  'под',
+  'над',
+  'чрез',
+  'от',
+  'об',
+  'вз',
+  'вс',
+  'в',
+  'с',
+]
+
 function isVowel(char) {
   return VOWELS.has(char)
 }
@@ -19,6 +47,15 @@ function isConsonant(char) {
   return !isVowel(char) && !SIGNS.has(char) && !SHORT_I.has(char)
 }
 
+/** R118_PREFIX_VOWEL: приставка|гласная (не ы) поверх запрета CV. */
+function isPrefixVowelException(word, index) {
+  const next = word[index]
+  if (!isVowel(next) || next.toLowerCase() === 'ы') return false
+
+  const left = word.slice(0, index).toLowerCase()
+  return MONO_PREFIXES.some((prefix) => left === prefix)
+}
+
 function formatWithBreaks(word, breaks) {
   let result = ''
   for (let i = 0; i < word.length; i++) {
@@ -34,6 +71,7 @@ function formatWithBreaks(word, breaks) {
  *
  * R117: слева и справа — хотя бы одна гласная.
  * R118: нельзя рвать согласную и следующую гласную (й/ь/ъ — отдельно).
+ * R118_PREFIX_VOWEL: исключение — после односложной приставки перед гласной (не ы).
  */
 export function hyphenate(word) {
   const breaks = new Set()
@@ -45,8 +83,9 @@ export function hyphenate(word) {
     // R117_SYLLABLE
     if (!hasVowel(left) || !hasVowel(right)) continue
 
-    // R118_CV
-    if (isConsonant(word[i - 1]) && isVowel(word[i])) continue
+    // R118_CV — с исключением для приставок
+    const cvBreak = isConsonant(word[i - 1]) && isVowel(word[i])
+    if (cvBreak && !isPrefixVowelException(word, i)) continue
 
     breaks.add(i)
   }
