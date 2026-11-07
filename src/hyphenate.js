@@ -68,6 +68,26 @@ function isPrefixYForbidden(word, index) {
   return leftMatchesPrefix(word, index, [...MONO_PREFIXES, 'роз', 'рос'])
 }
 
+/**
+ * R119_4: длина ведущей приставки, если дальше согласная (или ъ/ь: подъ|езд).
+ * Иначе null — приставку можно дробить (бе|зумный).
+ */
+function leadingPrefixBeforeConsonantLen(word) {
+  const lower = word.toLowerCase()
+  for (const prefix of MONO_PREFIXES) {
+    if (!lower.startsWith(prefix) || prefix.length >= word.length) continue
+    const next = word[prefix.length]
+    if (isConsonant(next) || SIGNS.has(next)) return prefix.length
+  }
+  return null
+}
+
+/** Запрет границ строго внутри такой приставки (по|дбить нельзя). */
+function isInsidePrefixBeforeConsonant(word, index) {
+  const prefixLen = leadingPrefixBeforeConsonantLen(word)
+  return prefixLen !== null && index > 0 && index < prefixLen
+}
+
 function formatWithBreaks(word, breaks) {
   let result = ''
   for (let i = 0; i < word.length; i++) {
@@ -87,6 +107,7 @@ function formatWithBreaks(word, breaks) {
  * R118_PREFIX_Y: после приставки перед ы перенос нельзя.
  * R119_1: нельзя отрывать ь/ъ от предшествующей буквы.
  * R119_2: нельзя отрывать й от предшествующей гласной.
+ * R119_4: не дробить односложную приставку перед согласной (формулировка 1956).
  */
 export function hyphenate(word) {
   const breaks = new Set()
@@ -103,6 +124,9 @@ export function hyphenate(word) {
 
     // R119_2_SHORT_I — не между гласной и й
     if (isVowel(word[i - 1]) && SHORT_I.has(word[i])) continue
+
+    // R119_4_PREFIX_CONSONANT — не внутри приставки перед согласной
+    if (isInsidePrefixBeforeConsonant(word, i)) continue
 
     // R118_PREFIX_Y
     if (isPrefixYForbidden(word, i)) continue
