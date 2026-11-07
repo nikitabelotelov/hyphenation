@@ -47,13 +47,25 @@ function isConsonant(char) {
   return !isVowel(char) && !SIGNS.has(char) && !SHORT_I.has(char)
 }
 
+function leftMatchesPrefix(word, index, prefixes = MONO_PREFIXES) {
+  const left = word.slice(0, index).toLowerCase()
+  return prefixes.some((prefix) => left === prefix)
+}
+
 /** R118_PREFIX_VOWEL: приставка|гласная (не ы) поверх запрета CV. */
 function isPrefixVowelException(word, index) {
   const next = word[index]
   if (!isVowel(next) || next.toLowerCase() === 'ы') return false
+  return leftMatchesPrefix(word, index)
+}
 
-  const left = word.slice(0, index).toLowerCase()
-  return MONO_PREFIXES.some((prefix) => left === prefix)
+/**
+ * R118_PREFIX_Y: после приставки нельзя перенос, если дальше ы.
+ * роз/рос — позиционные варианты раз/рас перед ы.
+ */
+function isPrefixYForbidden(word, index) {
+  if (word[index].toLowerCase() !== 'ы') return false
+  return leftMatchesPrefix(word, index, [...MONO_PREFIXES, 'роз', 'рос'])
 }
 
 function formatWithBreaks(word, breaks) {
@@ -72,6 +84,7 @@ function formatWithBreaks(word, breaks) {
  * R117: слева и справа — хотя бы одна гласная.
  * R118: нельзя рвать согласную и следующую гласную (й/ь/ъ — отдельно).
  * R118_PREFIX_VOWEL: исключение — после односложной приставки перед гласной (не ы).
+ * R118_PREFIX_Y: после приставки перед ы перенос нельзя.
  */
 export function hyphenate(word) {
   const breaks = new Set()
@@ -82,6 +95,9 @@ export function hyphenate(word) {
 
     // R117_SYLLABLE
     if (!hasVowel(left) || !hasVowel(right)) continue
+
+    // R118_PREFIX_Y
+    if (isPrefixYForbidden(word, i)) continue
 
     // R118_CV — с исключением для приставок
     const cvBreak = isConsonant(word[i - 1]) && isVowel(word[i])
